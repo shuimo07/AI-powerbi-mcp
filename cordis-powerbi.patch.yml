@@ -1,0 +1,54 @@
+# ===== Power BI MCP servers =====
+# Append this block to the END of your ACTIVE profile's cordis.patch.yml
+# (e.g. $DSH_HOME/profiles/web/cordis.patch.yml). Do NOT delete or edit any
+# existing entries above it. Saving the file triggers DSH's built-in hot
+# reload (watchUserPatches + cordis-plugin-hmr) - no restart needed.
+#
+# 2026-09-03 reference-machine notes (adjust paths for your machine):
+#   - NPM_CONFIG_CACHE/TEMP/TMP redirect caches to E: (or your chosen drive).
+#   - powerbi-designer runs from an E-drive venv because uvx on this machine
+#     hit a WindowsApps/store-Python EFS copy error (os error 6000); the PyPI
+#     package is identical. mcp is pinned <2 (the package only supports mcp 1.x).
+#   - powerbi (AjvoGod) is locally built (git TLS broken on this host made
+#     `npx github:AjvoGod/powerbi-mcp` unreliable); dist/index.js is the bin.
+#   - @microsoft/powerbi-modeling-mcp needs the official `--start` flag.
+
+- insert:
+    - id: mcp-powerbi-modeling
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: powerbi-modeling
+        transport: stdio
+        command: npx
+        args: ['-y', '@microsoft/powerbi-modeling-mcp', '--start']
+        env:
+          NPM_CONFIG_CACHE: 'E:\.npm-cache'
+          TEMP: 'E:\Temp'
+          TMP: 'E:\Temp'
+        toolCallTimeoutMs: 120000
+
+    - id: mcp-powerbi-designer
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: powerbi-designer
+        transport: stdio
+        command: 'E:\PowerBI_Tools\designer-venv\Scripts\python.exe'
+        args: ['-m', 'powerbi_mcp.server']
+        env:
+          TEMP: 'E:\Temp'
+          TMP: 'E:\Temp'
+        toolCallTimeoutMs: 120000
+
+    - id: mcp-powerbi
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: powerbi
+        transport: stdio
+        command: 'D:\AI\固件\node.exe'
+        args: ['E:\PowerBI_Tools\powerbi-mcp\dist\index.js']
+        env:
+          POWERBI_PBIX_ROOT: 'E:\PowerBI_Projects'
+          NPM_CONFIG_CACHE: 'E:\.npm-cache'
+          TEMP: 'E:\Temp'
+          TMP: 'E:\Temp'
+        toolCallTimeoutMs: 120000

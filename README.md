@@ -2,13 +2,30 @@
 
 让 DeepSeek Harness (DSH) 像 Codex + MCP 方案一样 **vibe 操控 Power BI**：语义建模、PBIP/PBIR 报表设计、PBIX 分析与云操作。
 
-本仓库提供一份**最终版提示词**（`PROMPT.md`），粘贴给 DSH（建议模型：DeepSeek-V4-Pro）即可执行接入流程。
+本仓库提供：一份**最终版提示词**（`PROMPT.md`），粘贴给 DSH（建议模型：DeepSeek-V4-Pro）即可执行接入流程；以及一份**已验收的接入产物**（配置块、接入报告、自检脚本），供复用与复核。
 
 ## 内容
 
 | 文件 | 说明 |
 |---|---|
 | `PROMPT.md` | 完整任务提示词：环境核查 → E 盘目录/运行时准备 → 核实三个 MCP 服务器 → 配置 DSH → 端到端验收 |
+| `cordis-powerbi.patch.yml` | **可执行配置**：追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
+| `docs/接入报告.md` | 参考机接入报告：环境事实、安装清单、工具数与验收证据、C 盘写入点清单、回滚方案 |
+| `tools/` | MCP 自检脚本：`mcp-inspect.cjs`（握手+工具清单）、`mcp-call.cjs`（只读工具冒烟） |
+
+## 状态与验收（2026-09-03）
+
+参考机已完成接入并通过本地端到端验收（详见 `docs/接入报告.md`）：
+
+| serverName | 启动方式（实测） | 工具数 | 验收证据 |
+|---|---|---|---|
+| `powerbi-modeling` | `npx -y @microsoft/powerbi-modeling-mcp --start` | 21 | 本地 TMDL 连接：11 表/61 度量/11 关系全链路只读 ✅ |
+| `powerbi-designer` | E 盘 venv：`python -m powerbi_mcp.server` | 92 | PBIP 项目摘要/页清单经 DSH 桥直调 ✅ |
+| `powerbi` | 本地构建：`node dist\index.js` | 12 | server_info + 11 个 PBIX 本地工具 ✅ |
+
+接入后在新会话可见工具前缀 `mcp__powerbi-modeling__*` / `mcp__powerbi-designer__*` / `mcp__powerbi__*`；配置热重载即时生效（watchUserPatches + HMR），回滚=删除追加块即可。
+
+> 实测偏差：designer 用 venv 而非 uvx（商店版 Python 的 EFS 复制错误）；powerbi 用本地构建而非 `npx github:`（参考机 git TLS 证书链异常）；modeling 需官方 `--start` 参数。细节见 `docs/接入报告.md` 第 4 节。
 
 ## 方案架构（三个 MCP 服务器）
 
