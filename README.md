@@ -11,21 +11,25 @@
 | `PROMPT.md` | 完整任务提示词：环境核查 → E 盘目录/运行时准备 → 核实三个 MCP 服务器 → 配置 DSH → 端到端验收 |
 | `cordis-powerbi.patch.yml` | **可执行配置**：追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
 | `docs/接入报告.md` | 参考机接入报告：环境事实、安装清单、工具数与验收证据、C 盘写入点清单、回滚方案 |
-| `tools/` | MCP 自检脚本：`mcp-inspect.cjs`（握手+工具清单）、`mcp-call.cjs`（只读工具冒烟） |
+| `docs/powerbi-desktop-integration.md` | **Power BI Desktop 接入记录**：三个 server 的 Desktop 能力、上游缺陷与修复、配置片段、验证方式 |
+| `patches/powerbi-mcp-desktop-discovery.patch` | 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
+| `tools/` | 自检脚本：`mcp-inspect.cjs`（握手+工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端） |
 
-## 状态与验收（2026-09-03）
+## 状态与验收（2026-09-03 接入 / 2026-09-11 补 Desktop）
 
 参考机已完成接入并通过本地端到端验收（详见 `docs/接入报告.md`）：
 
 | serverName | 启动方式（实测） | 工具数 | 验收证据 |
 |---|---|---|---|
-| `powerbi-modeling` | `npx -y @microsoft/powerbi-modeling-mcp --start` | 21 | 本地 TMDL 连接：11 表/61 度量/11 关系全链路只读 ✅ |
-| `powerbi-designer` | E 盘 venv：`python -m powerbi_mcp.server` | 92 | PBIP 项目摘要/页清单经 DSH 桥直调 ✅ |
-| `powerbi` | 本地构建：`node dist\index.js` | 12 | server_info + 11 个 PBIX 本地工具 ✅ |
+| `powerbi-modeling` | `npx -y @microsoft/powerbi-modeling-mcp --start` | 21 | 本地 TMDL 连接：11 表/61 度量/11 关系全链路只读 ✅；Power BI Desktop 直连（发现→连接→列库→读模型）✅ |
+| `powerbi-designer` | E 盘 venv：`python -m powerbi_mcp.server` | 92 | PBIP 项目摘要/页清单经 DSH 桥直调 ✅；Desktop 定位 doctor `[OK]` ✅ |
+| `powerbi` | 本地构建：`node dist\index.js` | 12 | server_info + 11 个 PBIX 本地工具 ✅；Desktop 发现/提取经补丁修复后可用 ✅ |
 
 接入后在新会话可见工具前缀 `mcp__powerbi-modeling__*` / `mcp__powerbi-designer__*` / `mcp__powerbi__*`；配置热重载即时生效（watchUserPatches + HMR），回滚=删除追加块即可。
 
-> 实测偏差：designer 用 venv 而非 uvx（商店版 Python 的 EFS 复制错误）；powerbi 用本地构建而非 `npx github:`（参考机 git TLS 证书链异常）；modeling 需官方 `--start` 参数。细节见 `docs/接入报告.md` 第 4 节。
+> 实测偏差：designer 用 venv 而非 uvx（商店版 Python 的 EFS 复制错误）；powerbi 用本地构建而非 `npx github:`（参考机 git TLS 证书链异常）；modeling 需官方 `--start` 参数；powerbi 的 Desktop 工具需应用 `patches/` 下的补丁。细节见 `docs/接入报告.md` 第 4/8 节与 `docs/powerbi-desktop-integration.md`。
+>
+> Desktop 相关提醒：程序本体可放非系统盘，但用户数据仍在 `%LOCALAPPDATA%\Microsoft\Power BI Desktop`；把程序移出 C 盘会使 HKLM 的 MSI 记录失效；Desktop 未打开报表时本地 AS 的 DMV 返回 0 行（属正常）。
 
 ## 方案架构（三个 MCP 服务器）
 
