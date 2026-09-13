@@ -12,6 +12,7 @@
 | `cordis-powerbi.patch.yml` | **可执行配置**：追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
 | `docs/接入报告.md` | 参考机接入报告：环境事实、安装清单、工具数与验收证据、C 盘写入点清单、回滚方案 |
 | `docs/powerbi-desktop-integration.md` | **Power BI Desktop 接入记录**：三个 server 的 Desktop 能力、上游缺陷与修复、配置片段、验证方式 |
+| `docs/codex-powerbi-modeling-integration.md` | **Codex 接入记录**：微软官方 Modeling MCP 的 E 盘缓存、注册状态、使用边界与回滚方式 |
 | `patches/powerbi-mcp-desktop-discovery.patch` | 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
 | `tools/` | 自检脚本：`mcp-inspect.cjs`（握手+工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端） |
 
@@ -40,6 +41,10 @@
 | `powerbi` | [AjvoGod/powerbi-mcp](https://github.com/AjvoGod/powerbi-mcp) | PBIX 分析、语义模型提取、报表导出、云操作 |
 
 DSH 侧无需安装额外插件：`@deepseek-ai/dsh-mcp-client` 是 DSH 内置插件，按 `cordis.patch.yml` 的 `- insert:` 语法追加三个实例即可，工具以 `mcp__<serverName>__<工具名>` 形式暴露给模型。
+
+## Codex 接入
+
+除 DSH 方案外，本仓库也记录了 Microsoft 官方 `powerbi-modeling-mcp` 在 Codex 中的独立接入方式。该方案通过本地 stdio MCP 将 Codex 连接到 Power BI 语义模型，并将 npm 缓存保留在 E 盘；它不覆盖本仓库既有 DSH 配置，也不负责报表视觉层编辑。详见 [Codex × Power BI Modeling MCP 接入记录](./docs/codex-powerbi-modeling-integration.md)。
 
 ## 参考文档
 
