@@ -6,15 +6,28 @@
 
 ## 内容
 
-| 文件 | 说明 |
-|---|---|
-| `PROMPT.md` | 完整任务提示词：环境核查 → E 盘目录/运行时准备 → 核实三个 MCP 服务器 → 配置 DSH → 端到端验收 |
-| `cordis-powerbi.patch.yml` | **可执行配置**：追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
-| `docs/接入报告.md` | 参考机接入报告：环境事实、安装清单、工具数与验收证据、C 盘写入点清单、回滚方案 |
-| `docs/powerbi-desktop-integration.md` | **Power BI Desktop 接入记录**：三个 server 的 Desktop 能力、上游缺陷与修复、配置片段、验证方式 |
-| `docs/codex-powerbi-modeling-integration.md` | **Codex 接入记录**：微软官方 Modeling MCP 的 E 盘缓存、注册状态、使用边界与回滚方式 |
-| `patches/powerbi-mcp-desktop-discovery.patch` | 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
-| `tools/` | 自检脚本：`mcp-inspect.cjs`（握手+工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端） |
+按**用途**分五类：
+
+| 分类 | 路径 | 说明 |
+|---|---|---|
+| 📄 **提示词** | `PROMPT.md` | 完整任务提示词：环境核查 → E 盘目录/运行时准备 → 核实三个 MCP 服务器 → 配置 DSH → 端到端验收。粘贴给 DSH（建议 DeepSeek-V4-Pro）即可执行接入 |
+| ⚙️ **可执行配置** | `cordis-powerbi.patch.yml` | 追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
+| 📚 **文档** | `docs/` | `接入报告.md`（环境事实 / 安装清单 / 工具数与验收证据 / C 盘写入点 / 回滚方案）、`powerbi-desktop-integration.md`（Desktop 接入记录）、`codex-powerbi-modeling-integration.md`（Codex 接入记录） |
+| 🧩 **上游补丁** | `patches/` | `powerbi-mcp-desktop-discovery.patch` —— 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
+| 🔧 **脚本** | `tools/` | `mcp-inspect.cjs`（握手 + 工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端）、`verify-modeling.cjs`（官方 modeling 服务自检）、`runtime/`（自检脚本的独立依赖） |
+| 🛠️ **配置样例** | `configs/` | 三个服务的启动配置、参数样例（列实例 / 列连接 / 连文件夹）、Codex 配置改动前备份（已脱敏） |
+| 📦 **实测产物** | `artifacts/` | `modeling-tools.json`（21 个工具的完整 schema 快照）+ `CodexConnectionCheck/`（端到端连通性验证 PBIP 工程） |
+
+```
+AI-powerbi-mcp/
+├── PROMPT.md                       # 接入提示词（粘给 DSH 即用）
+├── cordis-powerbi.patch.yml        # DSH profile 追加块
+├── docs/                           # 接入报告 / Desktop 记录 / Codex 记录
+├── patches/                        # 上游 powerbi-mcp 的 Desktop 发现补丁
+├── tools/                          # 自检与验收脚本（+ runtime/ 独立依赖）
+├── configs/                        # 服务启动配置 + 调用样例 + Codex 改动前备份
+└── artifacts/                      # 工具清单快照 + 连通性验证工程
+```
 
 ## 状态与验收（2026-09-03 接入 / 2026-09-11 补 Desktop）
 

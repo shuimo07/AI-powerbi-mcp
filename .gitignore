@@ -1,0 +1,29 @@
+# 依赖与运行时
+node_modules/
+**/node_modules/
+
+# 密钥 / 凭据（切勿提交）
+*.pem
+*.key
+github-ssh/
+*_rsa
+id_ed25519*
+.env
+.env.*
+
+# 临时文件
+temp/
+tmp/
+*.log
+
+# Power BI 本地缓存
+**/.pbi/
+**/.backups/
+**/.pbi/localSettings.json
+*.pbix
+~$*
+
+# 系统
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,13 @@
+table ConnectionCheck
+	measure 'Row Count' = COUNTROWS(ConnectionCheck)
+		formatString: 0
+
+	column Value
+		dataType: int64
+		sourceColumn: [Value]
+		formatString: 0
+		summarizeBy: sum
+
+	partition ConnectionCheck = calculated
+		mode: import
+		source = ROW("Value", 1)

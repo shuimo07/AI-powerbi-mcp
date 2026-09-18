@@ -1,0 +1,6 @@
+{
+  "request": {
+    "operation": "ConnectFolder",
+    "folderPath": "E:\\PowerBI_Projects\\Focus\\Focus.SemanticModel\\definition"
+  }
+}

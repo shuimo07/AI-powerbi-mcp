@@ -1,0 +1,29 @@
+[
+    {
+        "args":  [
+                     "-y",
+                     "@microsoft/powerbi-modeling-mcp",
+                     "--start"
+                 ],
+        "command":  "npx",
+        "name":  "modeling",
+        "timeoutMs":  150000
+    },
+    {
+        "args":  [
+                     "-m",
+                     "powerbi_mcp.server"
+                 ],
+        "command":  "E:\\PowerBI_Tools\\designer-venv\\Scripts\\python.exe",
+        "name":  "designer",
+        "timeoutMs":  60000
+    },
+    {
+        "args":  [
+                     "E:\\PowerBI_Tools\\powerbi-mcp\\dist\\index.js"
+                 ],
+        "command":  "D:\\AI\\固件\\node.exe",
+        "name":  "powerbi",
+        "timeoutMs":  60000
+    }
+]

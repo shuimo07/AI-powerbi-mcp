@@ -1,0 +1,64 @@
+model = "gpt-6-astra"
+model_reasoning_effort = "ultra"
+
+notify = [ "C:\\Users\\<用户名>\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\<runtime-hash>\\bin\\node_modules\\@oai\\sky\\bin\\windows\\codex-computer-use.exe", "turn-ended" ]
+service_tier = "priority"
+[features]
+
+[desktop]
+conversationDetailMode = "STEPS_COMMANDS"
+sansFontSize = 14
+codeFontSize = 13
+ambient-suggestions-enabled = false
+followUpQueueMode = "queue"
+open-link-in-target-preference = "in-app-browser"
+
+[marketplaces.openai-primary-runtime]
+source_type = "local"
+source = '\\?\C:\Users\<用户名>\.cache\codex-runtimes\codex-primary-runtime\plugins\openai-primary-runtime'
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = true
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
+[windows]
+sandbox = "elevated"
+
+[mcp_servers]
+
+[mcp_servers.cua_repl]
+command = 'C:\Program Files\WindowsApps\OpenAI.Codex_26.908.4834.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe'
+enabled = false
+
+[mcp_servers.node_repl]
+args = []
+command = 'C:\Users\<用户名>\AppData\Local\OpenAI\Codex\runtimes\cua_node\<runtime-hash>\bin\node_repl.exe'
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = 'C:\Users\<用户名>\AppData\Local\OpenAI\Codex\runtimes\cua_node\<runtime-hash>\bin\node_modules'
+NODE_REPL_NODE_PATH = 'C:\Users\<用户名>\AppData\Local\OpenAI\Codex\runtimes\cua_node\<runtime-hash>\bin\node.exe'
+NODE_REPL_TRUSTED_CODE_PATHS = 'C:\Users\<用户名>\.codex;C:\Users\<用户名>\AppData\Local\OpenAI\Codex\runtimes\cua_node\<runtime-hash>\bin\node_modules'
+CODEX_HOME = 'C:\Users\<用户名>\.codex'
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+BROWSER_USE_TINYSKY_ENABLED = "0"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.908.40834"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"C:/Users/<用户名>/.codex/plugins/cache/openai-bundled/browser/26.908.40834/scripts/browser-service.mjs","sky":"@oai/sky/service"}'
+SKY_CUA_NATIVE_PIPE = "1"
+SKY_CUA_NATIVE_PIPE_DIRECTORY = '\\.\pipe\codex-computer-use-<uuid>'
+CODEX_CLI_PATH = 'C:\Users\<用户名>\AppData\Local\OpenAI\Codex\bin\<build-hash>\codex.exe'

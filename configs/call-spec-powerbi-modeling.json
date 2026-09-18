@@ -1,0 +1,6 @@
+{
+  "name": "modeling",
+  "command": "npx",
+  "args": ["-y", "@microsoft/powerbi-modeling-mcp", "--start"],
+  "timeoutMs": 120000
+}
