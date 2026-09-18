@@ -74,5 +74,6 @@ node tools\mcp-e2e-desktop.cjs
 
 - **未打开报表时结果是空的**：Desktop 停在欢迎/空白页时，本地 AS 里没有已处理的模型，DMV 返回 0 行——这属正常，不代表接入失败；打开任意报表（或 PBIP/PBIX 项目）后再读即可。
 - **把程序移出 C 盘会让 MSI 记录失效**：程序文件移走后，HKLM 里那条 MSI 安装记录仍指向原位置，日后升级/修复会出问题。建议要么重装到目标盘、要么接受"便携布局 + 手工更新"。
-- **用户数据仍在 C 盘**：`%LOCALAPPDATA%\Microsoft\Power BI Desktop`（工作区、WebView2 缓存、AutoRecovery、Traces）由 Desktop 强制写入，无法重定向。
+- **用户数据默认写在 C 盘，但可以搬走**：`%LOCALAPPDATA%\Microsoft\Power BI Desktop`（工作区、WebView2 缓存、AutoRecovery、Traces；实测某机 **300 MB / 1508 文件**，且每跑一次就增长）由 Desktop 强制写入该路径，**没有任何配置项可改**。但实测可用**目录联接（junction）**整体搬到 E 盘而**路径保持不变**，Desktop 与三个 server 的发现逻辑（含 `msmdsrv.port.txt` 的硬编码路径）全部不受影响。完整做法与坑见 [`desktop-userdata-to-e-drive.md`](./desktop-userdata-to-e-drive.md)。
+   > 早前版本本行写的是"无法重定向"，该说法不准确，已修正。
 - 端口文件的位置与编码在不同 Desktop 版本间有过变化，补丁已同时兼容两种；若后续构建再次变化，这两处是最先要看的地方。

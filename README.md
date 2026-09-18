@@ -12,9 +12,9 @@
 |---|---|---|
 | 📄 **提示词** | `PROMPT.md` | 完整任务提示词：环境核查 → E 盘目录/运行时准备 → 核实三个 MCP 服务器 → 配置 DSH → 端到端验收。粘贴给 DSH（建议 DeepSeek-V4-Pro）即可执行接入 |
 | ⚙️ **可执行配置** | `cordis-powerbi.patch.yml` | 追加到活动 profile `cordis.patch.yml` 末尾的三实例块（含参考机备注与偏差说明） |
-| 📚 **文档** | `docs/` | `接入报告.md`（环境事实 / 安装清单 / 工具数与验收证据 / C 盘写入点 / 回滚方案）、`powerbi-desktop-integration.md`（Desktop 接入记录）、`codex-powerbi-modeling-integration.md`（Codex 接入记录） |
+| 📚 **文档** | `docs/` | `接入报告.md`（环境事实 / 安装清单 / 工具数与验收证据 / C 盘写入点 / 回滚方案）、`powerbi-desktop-integration.md`（Desktop 接入记录）、`codex-powerbi-modeling-integration.md`（Codex 接入记录）、`pbir-report-build-notes.md`（**PBIR 生成与校验实战笔记**：闭集校验、分类轴、TMDL 计算列）、`desktop-userdata-to-e-drive.md`（**Desktop 用户数据搬 E 盘的 junction 方案**，修正"不可重定向"结论） |
 | 🧩 **上游补丁** | `patches/` | `powerbi-mcp-desktop-discovery.patch` —— 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
-| 🔧 **脚本** | `tools/` | `mcp-inspect.cjs`（握手 + 工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端）、`verify-modeling.cjs`（官方 modeling 服务自检）、`runtime/`（自检脚本的独立依赖） |
+| 🔧 **脚本** | `tools/` | `mcp-inspect.cjs`（握手 + 工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端）、`verify-modeling.cjs`（官方 modeling 服务自检）、`validate-pbir.py`（**离线校验 PBIP 工程，不开 Desktop 就能卡住结构错误**）、`migrate_pbi_userdata_to_e.py`（**Desktop 用户数据迁 E 盘 + 建 junction**）、`runtime/`（自检脚本的独立依赖） |
 | 🛠️ **配置样例** | `configs/` | 三个服务的启动配置、参数样例（列实例 / 列连接 / 连文件夹）、Codex 配置改动前备份（已脱敏） |
 | 📦 **实测产物** | `artifacts/` | `modeling-tools.json`（21 个工具的完整 schema 快照）+ `CodexConnectionCheck/`（端到端连通性验证 PBIP 工程） |
 
@@ -22,9 +22,9 @@
 AI-powerbi-mcp/
 ├── PROMPT.md                       # 接入提示词（粘给 DSH 即用）
 ├── cordis-powerbi.patch.yml        # DSH profile 追加块
-├── docs/                           # 接入报告 / Desktop 记录 / Codex 记录
+├── docs/                           # 接入报告 / Desktop 记录 / Codex 记录 / PBIR 实战笔记 / 用户数据迁移
 ├── patches/                        # 上游 powerbi-mcp 的 Desktop 发现补丁
-├── tools/                          # 自检与验收脚本（+ runtime/ 独立依赖）
+├── tools/                          # 自检与验收脚本 + 离线校验 + 数据迁移（+ runtime/ 独立依赖）
 ├── configs/                        # 服务启动配置 + 调用样例 + Codex 改动前备份
 └── artifacts/                      # 工具清单快照 + 连通性验证工程
 ```
@@ -44,6 +44,21 @@ AI-powerbi-mcp/
 > 实测偏差：designer 用 venv 而非 uvx（商店版 Python 的 EFS 复制错误）；powerbi 用本地构建而非 `npx github:`（参考机 git TLS 证书链异常）；modeling 需官方 `--start` 参数；powerbi 的 Desktop 工具需应用 `patches/` 下的补丁。细节见 `docs/接入报告.md` 第 4/8 节与 `docs/powerbi-desktop-integration.md`。
 >
 > Desktop 相关提醒：程序本体可放非系统盘，但用户数据仍在 `%LOCALAPPDATA%\Microsoft\Power BI Desktop`；把程序移出 C 盘会使 HKLM 的 MSI 记录失效；Desktop 未打开报表时本地 AS 的 DMV 返回 0 行（属正常）。
+
+## 使用侧实测（接入之后）
+
+接入只是起点。以下是**真正拿 designer 的 PBIR 能力做报表**时踩到的坑，已沉淀成文档与脚本：
+
+| 发现 | 结论 | 落点 |
+|---|---|---|
+| **PBIR 的 `title` 是闭集校验** | 多写一个未定义键（如 `showSubtitle`）不是被忽略，而是**整份报表判为无效**——表现成"所有视觉对象空白"，极易误判为"数据没加载" | [`docs/pbir-report-build-notes.md`](docs/pbir-report-build-notes.md) §1 |
+| **离线校验可提前卡住** | designer 自带 validation engine（含 vendored PBIR schema），可在**不开 Desktop** 的情况下 100% 复现并定位这类错误 | [`tools/validate-pbir.py`](tools/validate-pbir.py) |
+| **M 文本列当分类轴会显示 `(空白)`** | 改用 **DAX 计算列 + `sortByColumn`** 才可靠；计算列的 TMDL 块必须放在 partition **之后**且不写 `sourceColumn` | 同上 §3 / §4 |
+| **`visualType` 必须用内部名** | 中文名不可用（分区图 = `areaChart`）；可在 `bin\zh-HANS\Strings.resjson` 里反查 | 同上 §5 |
+| **Desktop 用户数据其实可以搬走** | 早前写的"不可重定向"**不准确**：junction 可整体搬 E 盘且路径不变，MCP 侧零改动 | [`docs/desktop-userdata-to-e-drive.md`](docs/desktop-userdata-to-e-drive.md) |
+
+> 端到端验证产出一个 6 页 / 13 视觉对象的 PBIR 工程（`validate` `ok=True`），归档在
+> [shuimo07/powerbi_work · `projects/2026-09-18/`](https://github.com/shuimo07/powerbi_work/tree/main/projects/2026-09-18)。
 
 ## 方案架构（三个 MCP 服务器）
 
