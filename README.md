@@ -57,7 +57,7 @@ AI-powerbi-mcp/
 | **`visualType` 必须用内部名** | 中文名不可用（分区图 = `areaChart`）；可在 `bin\zh-HANS\Strings.resjson` 里反查 | 同上 §5 |
 | **Desktop 用户数据其实可以搬走** | 早前写的"不可重定向"**不准确**：junction 可整体搬 E 盘且路径不变，MCP 侧零改动 | [`docs/desktop-userdata-to-e-drive.md`](docs/desktop-userdata-to-e-drive.md) |
 
-> 端到端验证产出一个 6 页 / 13 视觉对象的 PBIR 工程（`validate` `ok=True`），归档在
+> 端到端验证产出一个 6 页 / 12 视觉对象的 PBIR 工程（`validate` `ok=True`），归档在
 > [shuimo07/powerbi_work · `projects/2026-09-18/`](https://github.com/shuimo07/powerbi_work/tree/main/projects/2026-09-18)。
 
 ## 方案架构（三个 MCP 服务器）

@@ -2,7 +2,7 @@
 
 用 `powerbi-designer` 的 PBIR（file-first）能力**纯手写生成**一个 6 页报表工程，全程离线（不开 Desktop）直到最终验收。这里记下踩到的坑与可复用的校验方法。
 
-> 参考产物：`shuimo07/powerbi_work` → `projects/2026-09-18/可视化实战演练/`（6 页 / 13 个视觉对象 / PBIR 增强格式）
+> 参考产物：`shuimo07/powerbi_work` → `projects/2026-09-18/可视化实战演练/`（6 页 / 12 个视觉对象 / PBIR 增强格式）
 
 ---
 
@@ -19,7 +19,7 @@ visuals/viz0101/visual.json 的 /visual/visualContainerObjects/title/0/propertie
 属性中包含一个额外的属性 "subtitle"。
 visuals/viz0101/visual.json 的 /visual/visualContainerObjects/title/0/properties
 属性中包含一个额外的属性 "subtitleFontSize"。
-…（6 页 13 个视觉对象，凡带标题的全部中招）
+…（6 页 12 个视觉对象，凡带标题的全部中招）
 ```
 
 ### 根因
