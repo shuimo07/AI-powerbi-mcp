@@ -1,137 +1,143 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+r"""离线检查 PBIR 工程（不开 Power BI Desktop），分两遍：
+
+  第 1 遍  Schema 校验（powerbi_mcp.validation.engine）
+           能卡住**闭集校验类**错误 —— 例如 visualContainerObjects/title/properties
+           里多写一个未定义键（showSubtitle 之类）。这类错误不会"被忽略"，
+           而是整份报表拒载（现象是视觉对象全空，极易误判为数据没加载）。
+
+  第 2 遍  query 投影静态检查（本项目自建）
+           ⚠️ vendored schema 里 visualContainer 2.4.0 **根本没有 queryState 的定义**，
+           `visual.query` 完全不校验 —— 所以 Aggregation.Function 写错类型
+           （字符串 "Sum" 而不是整数 0）时引擎报 ok=True，但 Power BI 会拒载。
+           这一遍专门补这个洞。
+
+用法:
+    "<designer-venv>\Scripts\python.exe" validate-pbir.py [工程根] [-o 输出txt]
 """
-validate-pbir.py —— 离线校验 Power BI PBIP 工程（PBIR + TMDL + reachability）
+import json, os, sys, glob, dataclasses
 
-用 powerbi-designer MCP 自带的校验引擎，在**不开 Power BI Desktop** 的情况下
-把结构性错误全部卡住。约定：只有 ok=True（0 error）才开 Desktop 验收。
+HERE = os.path.dirname(os.path.abspath(__file__))
+PROJ = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else os.path.dirname(HERE)
+OUT = None
+if "-o" in sys.argv:
+    OUT = sys.argv[sys.argv.index("-o") + 1]
 
-典型用途：
-  * 手写/程序生成 PBIR 工程后，先验一遍再打开
-  * 复现并定位 Desktop 弹出的「校验错误」对话框（如 title 属性闭集校验）
-  * CI / 提交前把关
+from powerbi_mcp.validation.engine import validate_project
 
-用法：
-    python validate-pbir.py <项目目录或 .pbip 文件> [-v] [--json 输出.json]
-    python validate-pbir.py E:\\PowerBI_Projects\\可视化实战演练
-
-退出码：
-    0 = ok=True 且无 error
-    1 = 存在 error（或被校验判为不 ok）
-    2 = 运行环境问题（引擎导入失败 / 路径不存在）
-
-依赖：
-    需要能 import powerbi_mcp（即 powerbi-designer 所在环境）。
-    若在独立 venv 里跑，请先：
-        <venv>\\Scripts\\python.exe -m pip install -e <powerbi-mcp-designer 源码目录>
-    或直接使用该 MCP 服务所用解释器执行本脚本。
-
-参考：docs/pbir-report-build-notes.md
-"""
-from __future__ import annotations
-
-import argparse
-import dataclasses
-import io
-import json
-import os
-import sys
+# Aggregation.Function 的合法整数枚举（semanticQuery 1.3.0）
+AGG_NAME = {0: "Sum", 1: "Average", 2: "Count", 3: "Min", 4: "Max",
+            5: "CountNonNull", 6: "Median", 7: "StandardDeviation", 8: "Variance"}
 
 
-def to_plain(obj):
-    """把 dataclass / 嵌套结构转成纯 dict/list，便于序列化。"""
-    if dataclasses.is_dataclass(obj):
-        return {f.name: to_plain(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
-    if isinstance(obj, dict):
-        return {k: to_plain(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [to_plain(x) for x in obj]
-    return obj
+def dump(o):
+    if dataclasses.is_dataclass(o):
+        return {f.name: dump(getattr(o, f.name)) for f in dataclasses.fields(o)}
+    if isinstance(o, list):
+        return [dump(x) for x in o]
+    if isinstance(o, dict):
+        return {k: dump(v) for k, v in o.items()}
+    return o
 
 
-def collect_issues(data):
-    """从校验结果里递归收集带 severity/code 的条目。"""
-    found = []
+data = dump(validate_project(PROJ))
 
-    def walk(node):
-        if isinstance(node, dict):
-            if node.get("severity") is not None or node.get("code") is not None:
-                found.append({
-                    "severity": node.get("severity"),
-                    "code": node.get("code"),
-                    "message": node.get("message"),
-                    "path": node.get("path"),
-                    "pointer": node.get("pointer"),
-                })
-            else:
-                for v in node.values():
-                    walk(v)
-        elif isinstance(node, (list, tuple)):
-            for v in node:
+lines = []
+
+
+def walk(d):
+    if isinstance(d, dict):
+        if d.get("severity") is not None or d.get("code") is not None:
+            lines.append("[%s] %s | %s | path=%s | ptr=%s"
+                         % (d.get("severity"), d.get("code"), d.get("message"),
+                            d.get("path"), d.get("pointer")))
+        else:
+            for v in d.values():
                 walk(v)
-
-    walk(data)
-    return found
-
-
-def normalize_target(arg: str) -> str:
-    """接受目录或 .pbip 文件，统一返回工程目录。"""
-    p = os.path.abspath(arg)
-    if os.path.isfile(p) and p.lower().endswith(".pbip"):
-        return os.path.dirname(p)
-    return p
+    elif isinstance(d, list):
+        for v in d:
+            walk(v)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(
-        description="离线校验 Power BI PBIP 工程（PBIR + TMDL）",
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("project", help="工程目录，或 .pbip 文件路径")
-    ap.add_argument("-v", "--verbose", action="store_true", help="打印全部 problem 明细")
-    ap.add_argument("--json", metavar="FILE", help="把完整校验结果写成 JSON")
-    args = ap.parse_args()
-
-    proj = normalize_target(args.project)
-    if not os.path.isdir(proj):
-        print("[FAIL] 目录不存在: %s" % proj)
-        return 2
-
-    try:
-        from powerbi_mcp.validation.engine import validate_project
-    except Exception as exc:  # noqa: BLE001
-        print("[FAIL] 无法导入 powerbi_mcp.validation.engine: %r" % (exc,))
-        print("       请用 powerbi-designer 所在环境的解释器运行本脚本，")
-        print("       或先把 powerbi-mcp-designer 以 -e 安装进当前 venv。")
-        return 2
-
-    report = validate_project(proj)
-    data = to_plain(report)
-    issues = collect_issues(data)
-    errors = [i for i in issues if str(i["severity"]).lower() in ("error", "1", "critical")]
-    warnings = [i for i in issues if str(i["severity"]).lower() in ("warning", "2", "warn")]
-
-    ok = bool(data.get("ok")) if isinstance(data, dict) else False
-
-    print("项目: %s" % proj)
-    print("ok = %s" % ok)
-    print("errors = %d   warnings = %d   (problems 总数 %d)" % (len(errors), len(warnings), len(issues)))
-
-    if args.json:
-        os.makedirs(os.path.dirname(os.path.abspath(args.json)) or ".", exist_ok=True)
-        io.open(args.json, "w", encoding="utf-8").write(
-            json.dumps({"project": proj, "ok": ok, "issues": issues, "raw": data},
-                       ensure_ascii=False, indent=2, default=str))
-        print("完整结果已写入: %s" % args.json)
-
-    if issues and (args.verbose or errors):
-        print("")
-        print("---- 明细 ----")
-        for i in (errors + warnings if not args.verbose else issues):
-            print("[%s] %s | %s | path=%s | ptr=%s" % (
-                i["severity"], i["code"], i["message"], i["path"], i["pointer"]))
-
-    return 0 if (ok and not errors) else 1
+walk(data)
+schema_issues = len(lines)
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+# ------------------------------------------------------------------ 第 2 遍
+def check_queries():
+    """扫所有 visual.json 的 queryState 投影，补引擎的盲区。"""
+    bad = []
+    report_dirs = [d for d in glob.glob(os.path.join(PROJ, "*.Report")) if os.path.isdir(d)]
+    if not report_dirs:
+        bad.append("找不到 *.Report 目录，跳过 query 检查")
+        return bad
+    n_files = n_proj = 0
+    pat = os.path.join(report_dirs[0], "definition", "pages", "*", "visuals", "*", "visual.json")
+    for vf in sorted(glob.glob(pat)):
+        rel = os.path.relpath(vf, PROJ).replace("\\", "/")
+        n_files += 1
+        try:
+            v = json.load(open(vf, encoding="utf-8"))
+        except Exception as e:
+            bad.append("%s | JSON 解析失败: %r" % (rel, e))
+            continue
+        qs = (((v.get("visual") or {}).get("query") or {}).get("queryState")) or {}
+        if not qs:
+            bad.append("%s | 没有 query.queryState（图表类视觉对象应当有）" % rel)
+        for role, blob in qs.items():
+            for i, pj in enumerate((blob or {}).get("projections") or []):
+                n_proj += 1
+                where = "%s | %s/projections/%d" % (rel, role, i)
+                field = pj.get("field")
+                if not isinstance(field, dict) or len(field) != 1:
+                    bad.append("%s | field 必须是单键对象，实为 %r" % (where, field))
+                    continue
+                kind = next(iter(field))
+                if kind == "Aggregation":
+                    agg = field["Aggregation"]
+                    if "Expression" not in agg:
+                        bad.append("%s | Aggregation 缺 Expression" % where)
+                    if "Function" not in agg:
+                        bad.append("%s | Aggregation 缺 Function" % where)
+                    else:
+                        fn = agg["Function"]
+                        if isinstance(fn, bool) or not isinstance(fn, int):
+                            bad.append("%s | Aggregation/Function 必须是**整数枚举**，"
+                                       "现在收到 %s（%r）—— 写字符串会整份报表拒载"
+                                       % (where, type(fn).__name__, fn))
+                        elif fn not in AGG_NAME:
+                            bad.append("%s | Aggregation/Function=%r 非法，合法值 0-8" % (where, fn))
+                elif kind != "Column" and kind != "Measure":
+                    bad.append("%s | field 的键 %r 不是已知的字段类型" % (where, kind))
+                if not pj.get("queryRef"):
+                    bad.append("%s | 缺 queryRef" % where)
+                if not pj.get("nativeQueryRef"):
+                    bad.append("%s | 缺 nativeQueryRef" % where)
+        # 视觉对象类型必须用内部名
+        vt = (v.get("visual") or {}).get("visualType")
+        if not vt:
+            bad.append("%s | 缺 visualType" % rel)
+        # title 闭集校验的常见来源：确认没混进 showSubtitle 之类
+        for k in ("visualContainerObjects", "objects"):
+            blob = (v.get("visual") or {}).get(k) or {}
+            for obj_name, arrs in blob.items():
+                for arr in arrs or []:
+                    for prop in (arr.get("properties") or {}):
+                        if prop in ("showSubtitle", "subtitle", "subtitleFontSize"):
+                            bad.append("%s | %s/%s/properties 含未定义键 %r（闭集校验会拒载）"
+                                       % (rel, k, obj_name, prop))
+    bad.insert(0, "扫描 visual.json=%d 个，投影=%d 条" % (n_files, n_proj))
+    return bad
+
+
+bad = check_queries()
+bad_lines = [b for b in bad if "扫描 visual.json" not in b]
+tot = schema_issues + len(bad_lines)
+
+report = "ok=%s\nschema_issues=%d\nquery_issues=%d\ntotal=%d\n%s\n%s" % (
+    data.get("ok") and not bad_lines, schema_issues, len(bad_lines), tot,
+    "\n".join(lines), "\n".join("[query] " + b for b in bad))
+
+if OUT:
+    open(OUT, "w", encoding="utf-8").write(report)
+print(report)
