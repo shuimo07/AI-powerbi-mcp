@@ -33,3 +33,13 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.venv/
+venv/
+
+# SPSS 运行产物（数据与结果不入库）
+spss_result/
+*.sav
+*.zsav
+*.spv
+*.spo
+chart*.html

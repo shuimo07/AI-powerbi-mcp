@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "spss": {
+      "type": "stdio",
+      "command": "E:\\venvs\\spss-mcp\\Scripts\\python.exe",
+      "args": [
+        "E:\\SPSS-MCP\\mcp_server.py"
+      ],
+      "env": {
+        "SPSS_PY": "E:\\大三·\\Python3\\python.exe",
+        "SPSS_CALL_TIMEOUT": "600"
+      }
+    }
+  }
+}

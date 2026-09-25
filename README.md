@@ -16,7 +16,8 @@
 | 🧩 **上游补丁** | `patches/` | `powerbi-mcp-desktop-discovery.patch` —— 给 AjvoGod/powerbi-mcp 的补丁：修复 Desktop 实例发现与语义模型提取（端口文件位置/编码、ADOMD 加载、DMV 列集） |
 | 🔧 **脚本** | `tools/` | `mcp-inspect.cjs`（握手 + 工具清单）、`mcp-call.cjs`（只读工具冒烟）、`mcp-e2e-desktop.cjs`（Desktop 端到端）、`verify-modeling.cjs`（官方 modeling 服务自检）、`validate-pbir.py`（**离线校验 PBIP 工程：schema + query 两遍**，不开 Desktop 就能卡住结构错误）、`migrate_pbi_userdata_to_e.py`（**Desktop 用户数据迁 E 盘 + 建 junction**）、`runtime/`（自检脚本的独立依赖） |
 | 🛠️ **配置样例** | `configs/` | 三个服务的启动配置、参数样例（列实例 / 列连接 / 连文件夹）、Codex 配置改动前备份（已脱敏） |
-| 📦 **实测产物** | `artifacts/` | `modeling-tools.json`（21 个工具的完整 schema 快照）+ `CodexConnectionCheck/`（端到端连通性验证 PBIP 工程） |
+| 📦 **实测产物** | `artifacts/` | `modeling-tools.json`（21 个工具的完整 schema 快照）+ `CodexConnectionCheck/`（端到端连通性验证 PBIP 工程）+ `spss-headless-charts/`（SPSS 无界面出图 300dpi 实证） |
+| 🧠 **技能（给 agent）** | `skills/` | `spss-analysis/`：把"查数据 → 跑过程 → 无界面出图 → 提 300dpi PNG"固化成 SOP，附 `scripts/extract_chart.py` |
 
 ```
 AI-powerbi-mcp/
@@ -79,6 +80,29 @@ DSH 侧无需安装额外插件：`@deepseek-ai/dsh-mcp-client` 是 DSH 内置�
 
 - [什么是 Power BI MCP 服务器（Microsoft Learn）](https://learn.microsoft.com/zh-cn/power-bi/developer/mcp/mcp-servers-overview)
 - [Power BI 语义模型创作技能（Microsoft Learn）](https://learn.microsoft.com/zh-cn/power-bi/developer/agentic/semantic-model-authoring-skill-overview)
+
+## SPSS × MCP 接入（2026-09-25）
+
+让 WorkBuddy 在对话里**直接驱动本机 IBM SPSS Statistics 27**（装在 `E:\大三·`，**非默认路径**）：
+描述要做的 SPSS 操作 → 生成语法 → 真实引擎执行 → 回读结果表；需要图时走 `OMS IMAGES=YES` 无界面出图 → 300dpi PNG。
+**全程不开 SPSS 界面**，产物全落 E 盘。
+
+| 资产 | 路径 | 说明 |
+|---|---|---|
+| 📚 接入报告 | [`docs/spss-mcp-integration.md`](docs/spss-mcp-integration.md) | 环境事实核查 / 选型 / 安装清单 / 7 个工具 / 验收证据 / 雷区清单 / 回滚 |
+| 🧠 技能 | [`skills/spss-analysis/SKILL.md`](skills/spss-analysis/SKILL.md) | agent 的 SOP：标准流程 + OMS 出图模板 + 雷区 + `scripts/extract_chart.py` |
+| 🔧 自检脚本 | [`tools/spss-verify.py`](tools/spss-verify.py) | 四步一条命令（引擎 → CSV→SAV → 统计过程 → 出图+提取），全 PASS 即通道可用 |
+| 🛠️ 配置 | [`configs/mcp.spss.json`](configs/mcp.spss.json) | MCP 注册片段（上游 `meteor0620/spss-mcp` @ `807f8f6`，MIT） |
+| 📦 实证产物 | [`artifacts/spss-headless-charts/`](artifacts/spss-headless-charts/) | 真机出图 1950×1500 @300dpi（直方图 / 分组条形图 / 散点+拟合线） |
+
+两条关键结论（都是实测，不是推测）：
+
+- **`OMS` 必须带 `IMAGES=YES`** —— 漏了 SPSS 不会把图渲染进 HTML，提取阶段一无所获，极易被误判成"headless 环境不支持出图"。
+- **字符串分组变量宽度 > 8 会让 `T-TEST` 报 `errLevel 3`** —— CSV 导入后单字符列常被自动建成 `A9`（长字符串），
+  这类过程只接受 ≤8 的字符串；实测对照 **`A8` ✅ / `A9` ❌**，用 `ALTER TYPE grp (A1).` 收窄即可。
+
+**存储边界**：唯一 C 盘写入是 `%USERPROFILE%\.workbuddy\mcp.json` 里几百字节的注册段（live home 根无法 junction）；
+工程、venv、技能实体、产物全在 E 盘。**回滚** = 删该注册段 + 删 `E:\SPSS-MCP`、`E:\venvs\spss-mcp`（SPSS 本体不受影响）。
 
 ## 注意
 
